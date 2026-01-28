@@ -64,5 +64,7 @@ The local structure (edges and shapes) are preserved really good, but the textur
 
 In order: original vs fixed images
 
+Losses:
+<img width="1223" height="801" alt="lossesFinal" src="https://github.com/user-attachments/assets/03032134-065e-4eae-b168-0f7150622539" />
 
 
