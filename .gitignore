@@ -1,0 +1,9 @@
+
+
+*.pth
+/*.png
+album_covers_512/
+overfitted_recons/
+runs/
+.vscode/
+__pycache__
