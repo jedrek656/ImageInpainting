@@ -330,18 +330,20 @@ class noBatchNormModel(nn.Module):
         self.bottleNeck = self.BottleNeckBlock(96)
 
         self.up3 = self.upBlock(96)
-        self.dec3 = self.ConvBlock(96*2, 64)
+        self.fuse3 = nn.Conv2d(96*2, 96, 1, 1)
+        self.dec3 = self.ConvBlock(96, 64)
 
         self.up2 = self.upBlock(64)
-        self.dec2 = self.ConvBlock(64*2, 32)
+        self.fuse2 = nn.Conv2d(64*2, 64, 1, 1)
+        self.dec2 = self.ConvBlock(64, 32)
 
         self.up1 = self.upBlock(32)
-        self.dec1 = self.ConvBlock(32*2, 32)
+        self.fuse1 = nn.Conv2d(32*2, 32, 1, 1)
+        self.dec1 = self.ConvBlock(32, 32)
 
         self.final = nn.Sequential(
             nn.Conv2d(32, 16, 3, 1, 1),
-            nn.BatchNorm2d(16),
-            nn.LeakyReLU(0.1),
+            nn.SiLU(),
 
             nn.Conv2d(16, 3, 3, 1, 1),
             nn.Sigmoid()
@@ -349,28 +351,28 @@ class noBatchNormModel(nn.Module):
 
     def BottleNeckBlock(self, in_channels):
         return nn.Sequential(
-            nn.Conv2d(in_channels, in_channels, 3, 1, padding=2, dilation=2),
-            nn.LeakyReLU(0.1),
-            nn.Conv2d(in_channels, in_channels, 3, 1, padding=4, dilation=4),
-            nn.LeakyReLU(0.1),
-            nn.Conv2d(in_channels, in_channels, 3, 1, padding=8, dilation=8),
-            nn.LeakyReLU(0.1),
+            nn.Conv2d(in_channels, in_channels, 3, padding=1, dilation=1),
+            nn.SiLU(),
+            nn.Conv2d(in_channels, in_channels, 3, padding=2, dilation=2),
+            nn.SiLU(),
+            nn.Conv2d(in_channels, in_channels, 3, padding=4, dilation=4),
+            nn.SiLU(),
         )
 
     def ConvBlock(self, in_channels, out_channels):
         return nn.Sequential(
             nn.Conv2d(in_channels, out_channels, 3, 1, 1),
-            nn.LeakyReLU(0.1),
+            nn.SiLU(),
 
             nn.Conv2d(out_channels, out_channels, 3, 1, 1),
-            nn.LeakyReLU(0.1),
+            nn.SiLU(),
         )
     
     def upBlock(self, in_channels):
         return nn.Sequential(
             nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False),
             nn.Conv2d(in_channels, in_channels, 3, 1, 1),
-            nn.LeakyReLU(0.1),
+            nn.SiLU(),
         )
 
     def forward(self, x):
@@ -382,14 +384,17 @@ class noBatchNormModel(nn.Module):
         
         d3 = self.up3(b)
         d3 = torch.cat([d3, e3], dim = 1)
+        d3 = self.fuse3(d3)
         d2 = self.dec3(d3)
 
         d2 = self.up2(d2)
         d2 = torch.cat([d2, e2], dim = 1)
+        d2 = self.fuse2(d2)
         d1 = self.dec2(d2)
 
         d1 = self.up1(d1)
         d1 = torch.cat([d1, e1], dim = 1)
+        d1 = self.fuse1(d1)
         d0 = self.dec1(d1)
 
         return self.final(d0)
